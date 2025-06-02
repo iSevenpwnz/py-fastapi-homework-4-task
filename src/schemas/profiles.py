@@ -1,5 +1,4 @@
 from datetime import date
-import inspect
 
 from fastapi import UploadFile, Form, File, HTTPException
 from pydantic import BaseModel, field_validator, HttpUrl
@@ -23,27 +22,13 @@ class ProfileCreateSchema(BaseModel):
     @classmethod
     def from_form(
         cls,
-        first_name: str = None,
-        last_name: str = None,
-        gender: str = None,
-        date_of_birth: date = None,
-        info: str = None,
-        avatar: UploadFile = None,
+        first_name: str = Form(...),
+        last_name: str = Form(...),
+        gender: str = Form(...),
+        date_of_birth: date = Form(...),
+        info: str = Form(...),
+        avatar: UploadFile = File(...),
     ) -> "ProfileCreateSchema":
-        frame = inspect.currentframe()
-        args, _, _, values = inspect.getargvalues(frame)
-        if first_name is None:
-            first_name = Form(...)
-        if last_name is None:
-            last_name = Form(...)
-        if gender is None:
-            gender = Form(...)
-        if date_of_birth is None:
-            date_of_birth = Form(...)
-        if info is None:
-            info = Form(...)
-        if avatar is None:
-            avatar = File(...)
         return cls(
             first_name=first_name,
             last_name=last_name,
@@ -53,9 +38,9 @@ class ProfileCreateSchema(BaseModel):
             avatar=avatar,
         )
 
-    @field_validator("first_name")
+    @field_validator("first_name", "last_name")
     @classmethod
-    def validate_first_name(cls, name: str) -> str:
+    def validate_name_field(cls, name: str) -> str:
         try:
             validate_name(name)
             return name.lower()
@@ -65,31 +50,18 @@ class ProfileCreateSchema(BaseModel):
                 detail=[
                     {
                         "type": "value_error",
-                        "loc": ["first_name"],
+                        "loc": [
+                            (
+                                "first_name"
+                                if "first_name" in name
+                                else "last_name"
+                            )
+                        ],
                         "msg": str(e),
                         "input": name,
                     }
                 ],
-            ) from e
-
-    @field_validator("last_name")
-    @classmethod
-    def validate_last_name(cls, name: str) -> str:
-        try:
-            validate_name(name)
-            return name.lower()
-        except ValueError as e:
-            raise HTTPException(
-                status_code=422,
-                detail=[
-                    {
-                        "type": "value_error",
-                        "loc": ["last_name"],
-                        "msg": str(e),
-                        "input": name,
-                    }
-                ],
-            ) from e
+            )
 
     @field_validator("avatar")
     @classmethod
@@ -108,7 +80,7 @@ class ProfileCreateSchema(BaseModel):
                         "input": avatar.filename,
                     }
                 ],
-            ) from e
+            )
 
     @field_validator("gender")
     @classmethod
@@ -127,7 +99,7 @@ class ProfileCreateSchema(BaseModel):
                         "input": gender,
                     }
                 ],
-            ) from e
+            )
 
     @field_validator("date_of_birth")
     @classmethod
@@ -146,7 +118,7 @@ class ProfileCreateSchema(BaseModel):
                         "input": str(date_of_birth),
                     }
                 ],
-            ) from e
+            )
 
     @field_validator("info")
     @classmethod
